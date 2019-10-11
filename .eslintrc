@@ -1,4 +1,94 @@
-{
+สร้าง Chatbot แบบง่ายๆด้วย Dialogflow และ Google Sheets + Apps Script
+Posted15 September 2019. 5 min read.
+Cover image
+จะเป็นอย่างไรถ้าเอา Dialogflow ไปเชื่อมต่อกับ Google Apps Script แล้วใช้ Google Sheets เป็น database บทความนี้มีคำตอบครับ
+
+บอกไว้ก่อน
+ก่อนจะเข้าเนื้อหาผมอยากให้ทุกคนศึกษาพื้นฐานของสิ่งเหล่านี้ก่อนนะครับ
+
+Dialogflow ผมเคยเขียนอธิบายเอาไว้ใน Medium ครับลองไปอ่านตรงนี้ก่อนนะครับ สร้าง Chatbot ร้านอาหารแบบง่ายๆ ด้วย Dialogflow: Part1
+Google Apps Script และ Clasp หลายคนอาจจะรู้จัก Apps Script แต่อาจจะไม่รู้จัก Clasp ลองเข้าไปอ่านที่นี่ก่อนนะครับ มาเขียน Google Apps Script บน local กันเถอะ (ใช้ modern javascript ได้ด้วยนะ)
+โจทย์วันนี้
+ผมจะสร้าง chatbot ร้านรองเท้าที่แสนจะธรรมดาครับ bot ตัวนี้จะมีหน้าที่เดียวเลยคือบอกราคาของรองเท้าแต่ละรุ่นที่มีในร้านครับ ถ้าไม่มีก็ไม่ตอบ (เอาแบบนี้เลย!) โดยผมจะใช้เครื่องมือยอดนิยมอย่าง Dialogflow ของ Google เป็นตัวกลางในการทำ NLP(Natural Language Processing) แล้วส่งไปประมวลผลกับ Google Apps Script ที่มี Google Sheets เป็นฐานข้อมูลราคาอีกทีครับ
+
+เริ่มจาก Dialogflow
+ผมสร้าง Project ก่อนเลยครับ ผมจะให้ชื่อว่า Sheet-Chatbot เลือกภาษา Thai - th เพราะเราจะรองรับแค่ภาษาไทยสร้าง Project บน Dialogflow
+เนื่องจากเราจะทำ bot ร้านรองเท้า เราก็ต้องทำให้มันรู้จักชื่อรองเท้าที่ในร้านก่อนครับ ด้วยการสร้าง Entity ขึ้นมาชื่อว่า product ครับสร้าง Entity ของรองเท้าแต่ละรุ่น
+หลังจากนั้นเราก็จะมาสร้าง Intent ของคนใช้กันครับ แปลง่ายๆก็น่าจะเป็น"ความต้องการ" ของการสื่อสารกับ bot น่ะครับ โดยผมตั้งชื่อว่า Ask for price ก็ตรงตัวครับ ถามราคาสร้าง Intent ของการถามราคา
+คราวนี้เราก็มาที่ Training Phase ครับ สอนให้ Bot รู้จักรูปประโยคของการ ถามราคา กันหน่อย ตรงนี้ยิ่งใส่เยอะๆยิ่งดีครับ จะเห็นว่าบางประโยคมันจะรู้เลยว่าคำนี้คือ product ของเรา ก็เพราะว่าผมใส่ไว้ใน Entity แล้วนั่นเองครับใส่ Training Phase ของการถามราคา
+ใส่ parameters ของ Intent ด้วยนะครับ บางครั้งเราไม่ได้ใส่ training phase ที่มี entity ติดไปด้วย เราก็จำเป็นต้องมาเพิ่มนะครับ เพื่อให้ bot ถามต่อจนกว่าจะได้ข้อมูลที่ครบถ้วนสมบูรณ์ใส่ Parameters ของการถามราคา
+Define Prompts ด้วยนะครับ เพื่อให้ดูไม่เป็น bot จนเกินไปเราสามารถใส่ประโยคคำถามถึงตัว product ได้หลายๆรูปแบบเลยใส่ Prompts ของ product
+เพื่อทดสอบคร่าวๆ ผมจะใส่ Text Response ตรงๆลงไปก่อนนะครับ เดี๋ยวตรงนี้เราจะมาแก้ทีหลังใส่ Text response ไปก่อน
+ทดสอบดูว่า bot เข้าใจอย่างที่เราอยากให้มันเข้าใจจริงๆหรือยังด้วยการพิมพ์ถามไปใน field ด้านข้างของจอได้เลยครับ สังเกตดูนะครับว่าที่ส่วน Intent จะขึ้นว่า Ask for price หรือเปล่า ถ้าเป็นแบบนั้นก็แปลว่ามันเข้าใจคำถามเราแล้วทดสอบพิมพ์คำถาม
+คำถามแรกของเรายังไม่มีข้อมูลของตัว product มันเลยต้องถามเราต่ออีกว่าเรา"ดูรุ่นไหนอยู่" ผมก็ตอบไปสั้นๆว่า"next%" ตอนนี้ให้สังเกตที่ parameter กับ value นะครับ เห็น Nike ZoomX Vaporfly NEXT% ใช่ไหม แบบนี้แปลว่า bot น่าจะเข้าใจคำถามและรู้ด้วยว่าเราถามถึงสินค้าตัวไหน แต่ที่มันตอบไปว่า อันนี้ก็ไม่ทราบ:P เพราะเราบอกให้มันตอบไปแบบนั้นไงครับ
+
+ตอบรุ่นของรองเท้าไปด้วย
+มาที่ Google Apps Script กับ Google Sheets บ้าง
+เริ่มจากการ clone Apps Script Starter แล้วก็ติดตั้ง dependency package ก่อนเลยครับ
+git clone https: //github.com/labnol/apps-script-starter sheet-chatbot
+cd sheet-chatbot
+npm install
+สร้าง Project บน Apps Script บ้าง โดยเลือก type เป็น sheets นะครับ เดี๋ยวเราจะใช้ sheet เก็บข้อมูลราคา
+npx clasp create --type sheets --title"Sheet Chatbot" --rootDir ./dist
+สร้าง Project บน Apps Script
+หลังจากนั้นก็ใช้ IDE เปิด folder ขึ้นมาครับ อย่างผมใช้ Visual Studio Code ก็แค่พิมพ์ code . บน terminal แล้วหลังจากนั้นก็ลบไฟล์ตั้งต้นใน folder src ทิ้งให้หมดครับ เหลือไว้แค่ index.js ซึ่งผมแก้เป็นแบบนี้
+const helloWorld = () =>{
+    Logger.log('Hello World');
+}
+
+global.helloWorld = helloWorld;
+ลบไฟล์ใน src ทิ้ง
+เปิดไฟล์ appsscript.json ขึ้นมาแล้วก็ลบทุกสิ่งที่ไม่ได้ใช้ทิ้งเช่นกันครับ ผมแก้ webapp.access ให้ ANYONE_ANONYMOUS ด้วยนะ เพราะว่าหลังจากเรา deploy ไปแล้วเราต้องการให้ Dialogflow เข้ามา request ได้ด้วย
+appsscript.json{
+  "timeZone": "Asia/Calcutta",
+  "dependencies": {
+    "libraries": []
+  },
+  "webapp": {
+    "access": "ANYONE_ANONYMOUS",
+    "executeAs": "USER_DEPLOYING"
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": []
+}
+ทำการ deploy แล้วเข้าไปเช็คที่เว็บด้วยคำสั่ง
+npm run deploy
+clasp open
+เปิดดู script บนเว็บ
+สั่ง Run function helloWorld ลองดูสักหน่อย ถ้าใน Log ขึ้นว่า"Hello World" แปลว่าไม่มีอะไรผิดพลาดผล run ของ hello world
+เพื่อความสะดวกสบายในชีวิต ผมติดตั้ง3rd party library เข้าไป2 ตัวนะครับ โดยไปที่ Resources" > "Libraries... แล้วติดตั้งพวกนี้ลงไป
+Tamotsu เอาไว้ mapping ข้อมูลบน Sheet ให้กลายเป็น Object ทำให้เราสะดวกในการเรียกใช้ครับ ไม่จำเป็นต้องไปปวดหัวกับ cell, row, column เลย key ของตัวนี้ก็คือ1OiJIgWlrg_DFHFYX_SoaEzhFJPCmwbbfEHEqYEfLEEhKRloTNVJ-3U4s
+BetterLog บันทึก log ลงบน Sheet ของเรา บางครั้งที่เรา call function จากข้างนอก web editor เราไม่สามารถเปิดเข้าไปดู log ได้ครับ ตัวนี้จะทำให้เราเช็คได้จาก sheet ของเราแทน key ของตัวนี้ก็คือ1DSyxam1ceq72bMHsE6aOVeOl94X78WCwiYPytKi7chlg4x5GqiNXSw0l
+อย่าลืมเลือก version ล่าสุดกันด้วยล่ะครับ
+
+ติดตั้ง Libraries ให้ app script
+หลังจากเพิ่ม Library ใน web editor แล้วก็มาเพิ่มใน appsscript.json ด้วยนะ
+appsscript.json{
+  "timeZone": "Asia/Calcutta",
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "BetterLog",
+        "libraryId": "1DSyxam1ceq72bMHsE6aOVeOl94X78WCwiYPytKi7chlg4x5GqiNXSw0l",
+        "version": "27"
+      },
+      {
+        "userSymbol": "Tamotsu",
+        "libraryId": "1OiJIgWlrg_DFHFYX_SoaEzhFJPCmwbbfEHEqYEfLEEhKRloTNVJ-3U4s",
+        "version": "31"
+      }
+    ]
+  },
+  "webapp": {
+    "access": "ANYONE_ANONYMOUS",
+    "executeAs": "USER_DEPLOYING"
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": []
+}
+ที่ .eslintrc ก็ต้องเพิ่ม Library ใหม่ของเราเข้าไปที่ globals ด้วยนะครับ เดี๋ยว build ไม่ผ่าน
+
+.eslintrc{
   "root": true,
   "parser": "babel-eslint",
   "extends": [
@@ -18,8 +108,7 @@
     "import/prefer-default-export": "error"
   },
   "globals": {
-    "OAuth1": true,
-    "OAuth2": true,
-    "FirebaseApp": true
+    "Tamotsu": true,
+    "BetterLog": true
   }
 }
